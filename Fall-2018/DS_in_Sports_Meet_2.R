@@ -79,6 +79,9 @@ find_extra_table <- function(url_link){
   return(table_two)
 }
 
+
+
+
 find_extra_table(url_link)[[1]]
 
 
@@ -143,7 +146,8 @@ class(offense_data$Result[1])
 # convert to character via 'as.character()' function.
 
 as.character(offense_data$Result[1])
-# substr(as.character(offense_data$Result[1]), 1,3)
+substr(as.character(offense_data$Result[1]), start=1,stop=3) # Now I can take substrings, for example.
+
 
 # To split it into "points scored" & "points allowed", we use base R's 'strsplit()' function, 
 # which takes as arguments:
@@ -152,6 +156,7 @@ as.character(offense_data$Result[1])
 
 spl <- strsplit(as.character(offense_data$Result[1]), split=" ")
 spl[[1]]
+length(spl[[1]])
 spl[[1]][2]
 
 score <- spl[[1]][2]
@@ -171,15 +176,19 @@ points.allowed
 as.numeric(points.scored)
 as.numeric(points.allowed)
 
+sapply(vec, func)
+
 Points <- sapply(as.character(offense_data$Result),
-       function(x){ 
-         spl <- strsplit(as.character(x), split=" ");
-         score <- spl[[1]][2]
-         score.no.parenth <- substr(score,2,nchar(score)-1)
-         points.scored <- strsplit(score.no.parenth,split="-")[[1]][1]
-         points.allowed <- strsplit(score.no.parenth,split="-")[[1]][2]
-         return(c(points.scored=as.numeric(points.scored),
-                  points.allowed=as.numeric(points.allowed)))})
+                 function(x){ 
+                     spl <- strsplit(as.character(x), split=" ");
+                     score <- spl[[1]][2]
+                     score.no.parenth <- substr(score,2,nchar(score)-1)
+                     points.scored <- strsplit(score.no.parenth,split="-")[[1]][1]
+                     points.allowed <- strsplit(score.no.parenth,split="-")[[1]][2]
+                     return(c(points.scored=as.numeric(points.scored),
+                              points.allowed=as.numeric(points.allowed)))
+                     }
+                 )
 
 
 offense_data <- read.table("Scraped_Offense.txt")
@@ -188,6 +197,10 @@ defense_data <- read.table("Scraped_Defense.txt")
 offense_data$Points <- Points[1,]
 defense_data$Points <- Points[2,]
 
+head(offense_data)
+head(defense_data)
+
+
 
 #####################
 ##  Get some numeric summaries
@@ -195,12 +208,15 @@ defense_data$Points <- Points[2,]
 
 ### Offense
 attach(offense_data)
+
 # Passing
 tapply(Yds, Team, mean)
 tapply(TD, Team, mean)
+
 # Rushing
 tapply(Yds.1, Team, mean)
 tapply(TD.1, Team, mean)
+
 # Turnovers
 tapply(Fum, Team, mean)
 tapply(Int, Team, mean)
@@ -210,16 +226,20 @@ detach(offense_data)
 
 ### Defense
 attach(defense_data)
+
 # Passing
 tapply(Yds, Team, mean)
 tapply(TD, Team, mean)
+
 # Rushing
 tapply(Yds.1, Team, mean)
 tapply(TD.1, Team, mean)
+
 # Turnovers
 tapply(Fum, Team, mean)
 tapply(Int, Team, mean)
 tapply(TO, Team, mean)
+
 detach(defense_data)
 
 
@@ -235,8 +255,10 @@ stat.names.def <- c("Yds","TD","Yds.1","TD.1","Fum","Int","TO")
 
 # Offense.
 
-# Means (apply to COLUMNS - MARGIN=2)
-off.team.means <- apply(offense_data[,stat.names.off], MARGIN=2, 
+# Use 'stat.names.off' as the COLUMN INDEX.
+# Getting means (apply to COLUMNS - MARGIN=2)
+off.team.means <- apply(offense_data[,stat.names.off], 
+                        MARGIN=2, 
                         function(x) tapply(x,Team.vec,mean))
 print(off.team.means)
 
@@ -272,6 +294,8 @@ library(plotrix)
 
 diff_data_num <- diff_data[,-c(1:5)]
 
+# Take matrix of absolute correlations:
+abs.cor.mat <- abs(cor(diff_data_num))
 # Get the pretty thresholded heatmap of correlation matrix. 
 color2D.matplot(ifelse(abs.cor.mat>=0.75, abs.cor.mat,0),
                 cs1=c(1,0),cs2=c(1,0),cs3=c(1,0),
@@ -308,8 +332,9 @@ pred.mat <- data.frame(true = diff_data_num$Points,
 head(pred.mat,20)
 print(sum((pred.mat$true - pred.mat$predicted)^2)/nrow(pred.mat))
 
-# To make it nicer, round the predicted values to integers
 
+
+# To make it nicer, round the predicted values to integers
 pred.mat <- data.frame(true = diff_data_num$Points,
                        predicted = predict(lm.obj,diff_data_num[,model.vars]))
 pred.mat$predicted <- round(pred.mat$predicted)
