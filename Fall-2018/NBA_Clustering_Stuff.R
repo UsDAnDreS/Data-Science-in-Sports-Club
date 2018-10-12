@@ -6,7 +6,7 @@ url_link <- 'https://www.basketball-reference.com/friv/standings.fcgi?month=1&da
 # Read the HTML webpage for that link into an R object
 url <- read_html(url_link)
 # Find a 'table' on that HTML page
-table_one <- xml_find_all(url, "//table") 
+table_one <- xml_find_all(url, "//table")
 # Obtain the actual contents of the table, wrapped into a data frame
 table_one <- html_table(table_one)
 
@@ -24,24 +24,24 @@ head(table_one[[2]])
 find_extra_table <- function(url_link){
   # Additional tables are within the comment tags -  between "<!--"  and  "-->"
   # Which is why your xpath is missing them.
-  
-  # Find all the commented nodes. 
+
+  # Find all the commented nodes.
   # xml_find_all looks in-between the <> of the object resulting from read_html().
   alt_tables <- xml_find_all(read_html(url_link),"//comment()")
-  
-  #Among commented nodes, find those containing '<table' reg. expression 
+
+  #Among commented nodes, find those containing '<table' reg. expression
   #raw_parts <- as.character(alt_tables[grep("\\</?table", as.character(alt_tables))])
   raw_parts <- as.character(alt_tables[grep("<table", as.character(alt_tables))])
-  
+
   # Remove the comment begin ("<!--") and end ("-->") tags
   strip_html <- stringi::stri_replace_all_regex(raw_parts, c("<\\!--","-->"),c("",""),
                                                 vectorize_all = FALSE)
-  
+
   # Read all the tables that used to be commented before.
   alt_tables <- lapply(grep("<table", strip_html, value = TRUE), function(i){
     rvest::html_table(xml_find_all(read_html(i), "//table"))[[1]]
   })
-  
+
   return(alt_tables)
 }
 
@@ -64,16 +64,16 @@ team_stats$Rk <- opp_stats$Rk <- NULL
 
 # Get rid of league averages.
 
-team_stats <- team_stats[-nrow(team_stats),] 
+team_stats <- team_stats[-nrow(team_stats),]
 opp_stats <- opp_stats[-nrow(opp_stats),]
 
 
-# Next, we need to obtain **per-game averages** in such categories as 
-# FG made, attempted (FGM/A),  3PTM/A, FTM/A, 
+# Next, we need to obtain **per-game averages** in such categories as
+# FG made, attempted (FGM/A),  3PTM/A, FTM/A,
 # offensive rebounds (ORB), DRB, TRB, AST, STL, BLK, TOV, PF, PTS.
 
-# All but the %-type of stats (FG%, 3PT% etc). 
-# We can obtain indices of those %-stats and other unwanted columns (team names) as follows 
+# All but the %-type of stats (FG%, 3PT% etc).
+# We can obtain indices of those %-stats and other unwanted columns (team names) as follows
 # (again some data wrangling/string operations):
 
 ind.exclude <- which(grepl("%",names(team_stats)))
@@ -182,8 +182,8 @@ axis(2,at=c(length(needed.vars.opp):1)-0.5,labels=needed.vars.opp)
 
 ## MERGING data frames:
 
-all_stats <- merge(team_stats[,c("Team",needed.vars.team)], 
-                   opp_stats[,c("Team",needed.vars.opp)], 
+all_stats <- merge(team_stats[,c("Team",needed.vars.team)],
+                   opp_stats[,c("Team",needed.vars.opp)],
                    by = "Team")
 head(all_stats)
 
@@ -200,7 +200,7 @@ all_stats$Team <- NULL
 
 ## Scaling the data.
 
-# Clustering is pretty sensitive to the variable scales, and 
+# Clustering is pretty sensitive to the variable scales, and
 # can be easily dominated by variables that have higher standard deviations,
 # due to units of measurement.
 #
@@ -229,10 +229,31 @@ library(graphics)
 
 default.margins <- par()$mar
 
-par(mar=c(3,1,1,10)) 
-plot(as.dendrogram(team.hc), 
+par(mar=c(3,1,1,10))
+plot(as.dendrogram(team.hc),
      horiz=T)
-par(mar=default.margins) 
+par(mar=default.margins)
+
+
+
+## Or if we plot using library(dendextend) we can color our branches and clusters,
+## choosing cluster number k.
+library(dendextend)
+
+default.margins <- par()$mar
+
+par(mar=c(3,1,1,10))
+as.dendrogram(team.hc) %>%
+	set("labels_colors", k=7) %>%
+	set("branches_k_color", k=7) %>%
+	plot(horiz=T)
+
+par(mar=default.margins)
+
+## And if we want to cut tree to create k cluster,
+## we can see which cluster each team is in:
+clusters <- cutree(team.hc, k=7)
+clusters
 
 
 # Get the teams names from the bottom to the top of the dendrogram.
@@ -244,7 +265,7 @@ ranking.calc <- function(stat,team){
   if (!is.numeric(stat)) print(stat)
   if (is.numeric(stat)) print(colnames(all_stats)[stat])
   return(mean(which(names(sort(all_stats[,stat],decreasing = T)) %in% team)))
-  
+
 }
 
 
@@ -267,12 +288,12 @@ kmeans(all_stats, centers=10, nstart=50,iter.max = 100)
 # Choosing K - elbow method.
 
 k.max <- 29
-wss <- sapply(1:k.max, 
+wss <- sapply(1:k.max,
               function(k){kmeans(all_stats, k, nstart=50,iter.max = 100)$tot.withinss})
 wss
 
 plot(1:k.max, wss,
-     type="b", pch = 19, frame = FALSE, 
+     type="b", pch = 19, frame = FALSE,
      xlab="Number of clusters K",
      ylab="Total within-clusters sum of squares")
 
